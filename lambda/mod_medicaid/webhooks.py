@@ -1,5 +1,7 @@
 import requests, os
 import json
+import secrets, string, hmac, base64
+from hashlib import sha256
 from pprint import pprint
 from datetime import datetime, timezone
 from uuid import uuid4
@@ -9,7 +11,7 @@ from requests_oauthlib import OAuth2Session
 from requests.auth import HTTPBasicAuth
 
 from .AWS_Data_Operations import dd_retrieve_by_via_trip_id
-from credentials import lyft_client_id, lyft_client_secret, lyft_program_id, lyft_auth_url, lyft_api_url
+from secrets_loader import get_credentials
 
 
 # RIGHT NOW THIS RETURNS EVERYTHING BACK VIA THE WEBHOOK FOR TESTING
@@ -17,7 +19,8 @@ from credentials import lyft_client_id, lyft_client_secret, lyft_program_id, lyf
 environ = os.environ.get('Execution')
 
 
-def via_interpreter(incoming_payload):
+def via_interpreter(event):
+	incoming_payload = json.loads(event['body'])
 	# this is used to call functions below
 	ride_status_codes_translator= dict(
 		Pending=None,
@@ -29,10 +32,14 @@ def via_interpreter(incoming_payload):
 		Boarded=picked_up,
 		# nothing available for arrived_dropoff
 		Finished=dropped_off,
-		Canceled=canceled, 
+		Canceled=canceled,
 		No_Show=canceled, #canceled_no_show reason
 		Not_Available=canceled #canceled_atms_failure reason
 	)
+
+	via_hmac_key = get_credentials().get('via_hmac_key', '')
+	if not via_hmac_key:
+		return {'error': 'HMAC key not configured'}
 
 	# Create Crypto secure random string to force fail via sig if no sig is detected.
 	crypto_random_str = ''.join(secrets.choice(string.ascii_uppercase + string.digits) for _ in range(20))
@@ -59,6 +66,13 @@ def via_interpreter(incoming_payload):
 
 def lyft_send_message(payload):
 	print(payload)
+
+	creds = get_credentials()
+	lyft_client_id = creds['lyft_client_id']
+	lyft_client_secret = creds['lyft_client_secret']
+	lyft_program_id = creds['lyft_program_id']
+	lyft_auth_url = creds['lyft_auth_url']
+	lyft_api_url = creds['lyft_api_url']
 
 	# Need to update against Lyft's needs here, slighty different than Via's
 	auth = HTTPBasicAuth(lyft_client_id, lyft_client_secret)
@@ -99,7 +113,7 @@ def query_ids(via_trip_id):
 		full_data = dd_retrieve_by_via_trip_id(via_trip_id)
 		orig_lyft_req = json.loads(full_data['lyft_request_payload'])
 
-		broker_trip_id = orig_lyft_req.get('trip_source', {}).get('broker_trip_id', '')
+		broker_trip_id = orig_lyft_req.get('trip_source_name', {}).get('broker_trip_id', '')
 		tapi_trip_id = full_data.get('tapi_trip_id', '')
 		atms_ride_id = full_data.get('atms_ride_id', '')
 
@@ -311,7 +325,7 @@ def receipt_ready(via):
 	return lyft_send_message(create_message({
 		**query_ids(via['trip_id']),
 		'data_source_ride_receipt_recorded_time': event_dtm.isoformat(),
-		stops: [], # Array of past stuff
+		'stops': [], # Array of past stuff
 		**driver(via),
 		**vehicle(via)
 
