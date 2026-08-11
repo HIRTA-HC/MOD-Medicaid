@@ -8,4 +8,21 @@ __pycache__
 # CDK asset staging directory
 .cdk.staging
 cdk.out
+
+# Node modules
 node_modules
+
+# Environment files — copy from *.example / *.sample.py and fill in
+.env
+middleware/.env
+
+# CDK context cache — auto-regenerated on first synth, contains account-specific IDs
+cdk.context.json
+
+# Environment-specific CDK config — copy from config/*.sample.py and fill in
+config/dev.py
+config/uat.py
+config/prod.py
+
+# On-prem local credential file — copy from lambda/credentials.sample.py and fill in
+lambda/credentials.py
