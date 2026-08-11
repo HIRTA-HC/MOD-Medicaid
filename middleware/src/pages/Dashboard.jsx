@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Search, RefreshCw, CheckSquare, AlertTriangle, X, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useAuthFetch } from '../auth/useAuthFetch';
 
-const PAGE_SIZE = 25;
+const PAGE_SIZE = 10;
 
 function JsonPanel({ label, data }) {
   const text = JSON.stringify(data, null, 2);
