@@ -40,11 +40,12 @@ def lyft_to_via(lyft_request_response):
         'first_name':lyft_request_response.get('rider',{}).get('first_name',""),
         'last_name':lyft_request_response.get('rider',{}).get('last_name',""),
         'phone_number':lyft_request_response.get('rider',{}).get('phone',""),
-        'email':lyft_request_response.get('rider',{}).get('first_name',"")+'.'+lyft_request_response.get('rider',{}).get('last_name',"")+'@hirta.us'
+        'email':lyft_request_response.get('rider',{}).get('first_name',"")+'.'+lyft_request_response.get('rider',{}).get('last_name',"")+'@hirta.com'
     }
 
 
-    subservice = 'Health_Connector'
+    import secrets_loader as _sl
+    subservice = _sl.get_credentials().get('tms_service_tag', '')
 
     # Need to store TAPI trip ID for reference back to Lyft
     tapi_trip_id = lyft_request_response.get('tapi_trip_id',"")

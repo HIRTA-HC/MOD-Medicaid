@@ -1,3 +1,6 @@
+# On-prem development template — fill in locally, do NOT commit actual values.
+# On AWS, credentials are fetched from Secrets Manager via secrets_loader.py.
+
 # Via Credentials
 via_client_id = ''
 via_client_secret = ''

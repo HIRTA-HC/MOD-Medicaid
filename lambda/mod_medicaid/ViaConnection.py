@@ -17,12 +17,7 @@ class ViaConnection:
         self._region='us-west-1'
         
         # get credentials
-        if on_prem:
-            import dev_credentials as credentials
-            # import prod_credentials as credentials
-            self._secret = credentials.secret
-        else:
-            self._secret = self._get_aws_secret()
+        self._secret = self._get_aws_secret()
         
         # set internal vars
         self._rider = None
@@ -38,32 +33,10 @@ class ViaConnection:
         self._oauth.close()
         print("closing oauth")
 
-    # get API connection info from AWS Secrets Manager
+    # get API connection info from AWS Secrets Manager (or on-prem fallback via secrets_loader)
     def _get_aws_secret(self):
-        # import boto3
-        # from botocore.exceptions import ClientError
-        # # set secret name
-        # agency_secrets = {'Metro': 'prod/via'} # UPDATE
-        # # set secret name and region
-        # secret_name = agency_secrets.get(self._agency_name)
-        # if secret_name is None:
-        #     return None
-        # create a Secrets Manager client
-        session = boto3.session.Session()
-        client = session.client(
-            service_name='secretsmanager',
-            region_name=self._region
-        )
-        try:
-            get_secret_value_response = client.get_secret_value(
-                SecretId='prod_credentials'
-            )
-        except ClientError as e:
-            raise e
-        # return secret as a dictionary
-        secret = get_secret_value_response['SecretString']
-        secret_dict = json.loads(secret)
-        return secret_dict
+        from secrets_loader import get_credentials
+        return get_credentials()
     
     def _initiate_oauth(self):
         # get credentials
