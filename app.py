@@ -1,28 +1,34 @@
-#!/usr/bin/env python3
+#!/usr/bin/env py
 import os
+import importlib
 
 import aws_cdk as cdk
 
-from health_connector_cdk.health_connector_cdk_stack import HealthConnectorCdkStack
+from health_connector_cdk.health_connector_cdk_stack import MedicaidCdkStack
 
 
 app = cdk.App()
-HealthConnectorCdkStack(app, "HealthConnectorCdkStack",
-    # If you don't specify 'env', this stack will be environment-agnostic.
-    # Account/Region-dependent features and context lookups will not work,
-    # but a single synthesized template can be deployed anywhere.
 
-    # Uncomment the next line to specialize this stack for the AWS Account
-    # and Region that are implied by the current CLI configuration.
+# Select target environment:
+#   cdk deploy -c env=dev
+#   cdk deploy -c env=uat
+#   cdk deploy -c env=prod
+#   CDK_ENV=prod cdk deploy
+# Falls back to 'dev' if neither is specified.
+env_name = app.node.try_get_context('env') or os.getenv('CDK_ENV', 'dev')
 
-    #env=cdk.Environment(account=os.getenv('CDK_DEFAULT_ACCOUNT'), region=os.getenv('CDK_DEFAULT_REGION')),
+config_module = importlib.import_module(f'config.{env_name}')
+config = config_module.CONFIG
 
-    # Uncomment the next line if you know exactly what Account and Region you
-    # want to deploy the stack to. */
+# Stack name encodes env + version so multiple stacks can coexist in the same account.
+# To deploy a v2 alongside v1: bump version in config/{env}.py and re-run cdk deploy.
+stack_name = f'MedicaidStack-{config.env}-{config.version}'
 
-    env=cdk.Environment(account='891377257073', region='us-west-1'),
-
-    # For more information, see https://docs.aws.amazon.com/cdk/latest/guide/environments.html
-    )
+MedicaidCdkStack(
+    app,
+    stack_name,
+    config=config,
+    env=cdk.Environment(account=config.aws_account, region=config.aws_region),
+)
 
 app.synth()

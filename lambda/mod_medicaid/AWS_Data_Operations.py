@@ -4,9 +4,13 @@ from datetime import datetime
 import boto3
 from boto3.dynamodb.conditions import Key
 
+
+def _table(name_env: str):
+    return boto3.resource('dynamodb').Table(os.environ[name_env])
+
+
 def dd_new_trip(lyft_trip_data=None, atms_ride_id=str(uuid.uuid4()), via_response=None):
-    dynamodb = boto3.resource("dynamodb")
-    table = dynamodb.Table('MOD_Medicaid')
+    table = _table('TABLE_NAME')
 
     #input data for table insertion
     # Protects dynamodb table if string is not provided, except for None
@@ -26,8 +30,7 @@ def dd_new_trip(lyft_trip_data=None, atms_ride_id=str(uuid.uuid4()), via_respons
     })
         
 def dd_get_via_trip_id(tapi_trip_id):
-    dynamodb = boto3.resource("dynamodb")
-    table = dynamodb.Table('MOD_Medicaid')
+    table = _table('TABLE_NAME')
 
     projection_expression = "via_trip_id"
     # projection_expression = "column1, column2"
@@ -48,9 +51,7 @@ def dd_get_via_trip_id(tapi_trip_id):
 
 
 def dd_history_entry(old_entry):
-    # Prepare the DynamoDB client
-    dynamodb = boto3.resource("dynamodb")
-    history_table = dynamodb.Table("MOD_Medicaid_History")
+    history_table = _table('HISTORY_TABLE_NAME')
     old_entry['update_time'] = str(int(round(datetime.now().timestamp(), 0)))
 
     history_table.put_item(Item=old_entry)
@@ -58,8 +59,7 @@ def dd_history_entry(old_entry):
 
 # Check rows:
 def dd_retrieve_data(tapi_trip_id):
-    dynamodb = boto3.resource("dynamodb")
-    table = dynamodb.Table('MOD_Medicaid')
+    table = _table('TABLE_NAME')
     filter_expression = Key('tapi_trip_id').eq(tapi_trip_id)
     rows = table.scan(
         FilterExpression=filter_expression
@@ -71,9 +71,23 @@ def dd_retrieve_data(tapi_trip_id):
     return(items)
     
 
+def dd_scan_all_trips() -> list:
+    """Full paginated scan of MOD_Medicaid; handles DynamoDB 1 MB page limit."""
+    table  = _table('TABLE_NAME')
+    items  = []
+    kwargs = {}
+    while True:
+        resp = table.scan(**kwargs)
+        items.extend(resp.get('Items', []))
+        last = resp.get('LastEvaluatedKey')
+        if not last:
+            break
+        kwargs['ExclusiveStartKey'] = last
+    return items
+
+
 def dd_retrieve_by_via_trip_id(via_trip_id):
-    dynamodb = boto3.resource("dynamodb")
-    table = dynamodb.Table('MOD_Medicaid')
+    table = _table('TABLE_NAME')
     filter_expression = Key('via_trip_id').eq(via_trip_id)
     rows = table.scan(
         FilterExpression=filter_expression
